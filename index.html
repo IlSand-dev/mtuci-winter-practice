@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Coffee Cup Counter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      padding: 40px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h1 { text-align: center; }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    img {
+      max-width: 100%;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+    }
+    .stats {
+      margin-top: 30px;
+    }
+    .stats ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>☕ Coffee Cup Counter</h1>
+
+    <input type="file" id="imageInput" accept="image/*" />
+    <br />
+    <button onclick="processImage()">Обработать изображение</button>
+
+    <h3 id="resultText"></h3>
+    <img id="resultImage" />
+
+    <div class="stats">
+      <h2>📊 Последние 5 результатов</h2>
+      <ul id="statsList"></ul>
+    </div>
+  </div>
+
+<script>
+const API_URL = "http://127.0.0.1:8000/process/image";
+
+function loadStats() {
+  const stats = JSON.parse(localStorage.getItem("cup_stats") || "[]");
+  const list = document.getElementById("statsList");
+  list.innerHTML = "";
+
+  stats.forEach((item, index) => {
+    const li = document.createElement("li");
+    li.innerText = `#${index + 1}: ${item.cups} стаканов (${item.time})`;
+    list.appendChild(li);
+  });
+}
+
+function saveStat(count) {
+  const stats = JSON.parse(localStorage.getItem("cup_stats") || "[]");
+  stats.unshift({
+    cups: count,
+    time: new Date().toLocaleString()
+  });
+
+  if (stats.length > 5) stats.length = 5;
+  localStorage.setItem("cup_stats", JSON.stringify(stats));
+  loadStats();
+}
+
+function processImage() {
+  const fileInput = document.getElementById("imageInput");
+  if (!fileInput.files.length) {
+    alert("Выберите изображение");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  fetch(API_URL, {
+    method: "POST",
+    body: formData
+  })
+  .then(res => {
+    console.log(res.headers)
+    const count = res.headers.get("x-cups-detected");
+    document.getElementById("resultText").innerText =
+      `Обнаружено стаканов: ${count}`;
+    saveStat(count);
+    return res.blob();
+  })
+  .then(blob => {
+    document.getElementById("resultImage").src = URL.createObjectURL(blob);
+  })
+  .catch(err => alert("Ошибка обработки"));
+}
+
+loadStats();
+</script>
+</body>
+</html>
