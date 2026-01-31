@@ -4,3 +4,7 @@
 *.pt
 
 __pycache__/
+
+history.json
+
+*.pdf

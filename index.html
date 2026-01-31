@@ -43,30 +43,53 @@
 
     <input type="file" id="imageInput" accept="image/*" />
     <br />
-    <button onclick="processImage()">Обработать изображение</button>
+    <button id="processImageBtn">Обработать изображение</button>
 
     <h3 id="resultText"></h3>
     <img id="resultImage" />
 
     <div class="stats">
+      <button id="reportBtn">📄 Скачать PDF-отчёт</button>
       <h2>📊 Последние 5 результатов</h2>
       <ul id="statsList"></ul>
     </div>
   </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const button = document.getElementById("processImageBtn");
+  button.addEventListener("click", processImage);
+
+  const reportBtn = document.getElementById("reportBtn");
+  reportBtn.addEventListener("click", () => {
+    window.open("http://127.0.0.1:8000/report/pdf", "_blank");
+  });
+});
+
 const API_URL = "http://127.0.0.1:8000/process/image";
 
-function loadStats() {
-  const stats = JSON.parse(localStorage.getItem("cup_stats") || "[]");
-  const list = document.getElementById("statsList");
-  list.innerHTML = "";
+function pluralizeCups(n) {
+  n = Math.abs(n) % 100;
+  const n1 = n % 10;
+  if (n > 10 && n < 20) return "стаканов";
+  if (n1 > 1 && n1 < 5) return "стакана";
+  if (n1 === 1) return "стакан";
+  return "стаканов";
+}
 
-  stats.forEach((item, index) => {
-    const li = document.createElement("li");
-    li.innerText = `#${index + 1}: ${item.cups} стаканов (${item.time})`;
-    list.appendChild(li);
-  });
+function loadStats() {
+  fetch("http://127.0.0.1:8000/history")
+    .then(res => res.json())
+    .then(stats => {
+      const list = document.getElementById("statsList");
+      list.innerHTML = "";
+
+      stats.slice(-5).reverse().forEach((item, index) => {
+        const li = document.createElement("li");
+        li.innerText = `#${index + 1}: ${item.cups_detected} ${pluralizeCups(item.cups_detected)} — ${item.filename} (${item.timestamp})`;
+        list.appendChild(li);
+      });
+    });
 }
 
 function saveStat(count) {
@@ -96,8 +119,7 @@ function processImage() {
     body: formData
   })
   .then(res => {
-    console.log(res.headers)
-    const count = res.headers.get("x-cups-detected");
+    const count = res.headers.get("X-Cups-Detected");
     document.getElementById("resultText").innerText =
       `Обнаружено стаканов: ${count}`;
     saveStat(count);
